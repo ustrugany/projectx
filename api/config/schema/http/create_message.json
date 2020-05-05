@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "http://example.com/example.json",
+  "type": "object",
+  "title": "The root schema",
+  "description": "The root schema comprises the entire JSON document.",
+  "default": {},
+  "required": [
+    "email",
+    "title",
+    "content",
+    "magic_number"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "email": {
+      "$id": "#/properties/email",
+      "type": "string",
+      "title": "The email schema",
+      "description": "An explanation about the purpose of this instance.",
+      "default": "",
+      "examples": [
+        "anna.zajkowska@example.com"
+      ]
+    },
+    "title": {
+      "$id": "#/properties/title",
+      "type": "string",
+      "title": "The title schema",
+      "description": "An explanation about the purpose of this instance.",
+      "default": "",
+      "examples": [
+        "Interview 3"
+      ]
+    },
+    "content": {
+      "$id": "#/properties/content",
+      "type": "string",
+      "title": "The content schema",
+      "description": "An explanation about the purpose of this instance.",
+      "default": "",
+      "examples": [
+        "simple text 3"
+      ]
+    },
+    "magic_number": {
+      "$id": "#/properties/magic_number",
+      "type": "integer",
+      "title": "The magic_number schema",
+      "description": "An explanation about the purpose of this instance.",
+      "default": 0,
+      "examples": [
+        101.0
+      ]
+    }
+  }
+}
