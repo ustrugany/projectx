@@ -1,0 +1,35 @@
+run:
+  deadline: 1m
+  skip-dirs:
+    - vendor
+    - tmp
+  modules-download-mode: vendor
+  build-tags:
+    - unit
+    - functional
+linters:
+  disable-all: true
+  enable:
+    - deadcode
+    - errcheck
+    - goconst
+    - gocritic
+    - gofmt
+    - golint
+    - gosec
+    - govet
+    - misspell
+    - nakedret
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+
+issues:
+  # Restricts maximum count of issues to display with the same text, and show all instead.
+  max-same-issues: 0
+  max-issues-per-linter: 0
+linters-settings:
+  govet:
+    check-shadowing: true
