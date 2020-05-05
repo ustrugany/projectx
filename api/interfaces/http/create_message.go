@@ -21,20 +21,20 @@ type CreateMessageRequest struct {
 }
 
 type CreateMessageHandler struct {
-	createMessage service.CreateMessageUseCase
-	logger        zap.SugaredLogger
-	config        api.Config
+	service service.CreateMessage
+	logger  zap.SugaredLogger
+	config  api.Config
 }
 
 func CreateCreateMessageHandler(
-	createMessage service.CreateMessageUseCase,
+	service service.CreateMessage,
 	logger zap.SugaredLogger,
 	config api.Config,
-) CreateMessageHandler {
+) http.Handler {
 	return CreateMessageHandler{
-		createMessage: createMessage,
-		logger:        logger,
-		config:        config,
+		service: service,
+		logger:  logger,
+		config:  config,
 	}
 }
 
@@ -42,24 +42,24 @@ func (h CreateMessageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	// Read the body
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		h.serve500Error(err, `{"error": "Server error"}`, w)
+		h.serve500Error(err, ServerErrorBody, w)
 		return
 	}
 
 	// Read the schema file
 	path, err := h.config.SchemaPath("create_message")
 	if err != nil {
-		h.serve400Error(err, `{"error": "Bad request"}`, w)
+		h.serve400Error(err, BadRequestBody, w)
 		return
 	}
 	fileSchema, err := ioutil.ReadFile(path)
 	if err != nil {
-		h.serve400Error(err, `{"error": "Bad request"}`, w)
+		h.serve400Error(err, BadRequestBody, w)
 		return
 	}
 	rs := &jsonschema.RootSchema{}
 	if err = json.Unmarshal(fileSchema, rs); err != nil {
-		h.serve500Error(err, `{"error": "Server error"}`, w)
+		h.serve500Error(err, ServerErrorBody, w)
 		return
 	}
 
@@ -68,7 +68,7 @@ func (h CreateMessageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		Errors []jsonschema.ValError `json:"errors"`
 	}{}
 	if validation.Errors, err = rs.ValidateBytes(body); len(validation.Errors) > 0 {
-		h.logger.Warnw("Schema validation failed", "validation", validation)
+		h.logger.Warnw("message found invalid", "validation", validation)
 		var errorsData []byte
 		errorsData, err = json.Marshal(validation)
 		if err != nil {
@@ -82,17 +82,17 @@ func (h CreateMessageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	var cm CreateMessageRequest
 	err = json.Unmarshal(body, &cm)
 	if err != nil {
-		h.serve400Error(err, `{"error": "Bad request"}`, w)
+		h.serve400Error(err, BadRequestBody, w)
 		return
 	}
 
 	var m api.Message
-	_, err = h.createMessage.CreateMessage(cm.Title, cm.Content, cm.Email, cm.MagicNumber)
+	m, err = h.service.CreateMessage(cm.Title, cm.Content, cm.Email, cm.MagicNumber)
 	if err != nil {
-		h.serve500Error(err, `{"error": "Server error"}`, w)
+		h.serve500Error(err, ServerErrorBody, w)
 		return
 	}
-	h.logger.Debugw("Message created", "message", m)
+	h.logger.Debugw("message created", "message", m)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

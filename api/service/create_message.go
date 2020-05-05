@@ -8,7 +8,7 @@ import (
 )
 
 type CreateMessage interface {
-	CreateMessage(title, content, email string, magicNumber int)
+	CreateMessage(title, content, email string, magicNumber int) (api.Message, error)
 }
 
 type MessageValidationError struct {
@@ -19,28 +19,28 @@ func (e MessageValidationError) Error() string {
 	return e.Reason
 }
 
-type CreateMessageUseCase struct {
-	repository api.MessageRepository
+type createMessage struct {
+	messageRepository api.MessageRepository
 }
 
-func CreateCreateMessageUseCase(repository api.MessageRepository) CreateMessageUseCase {
-	return CreateMessageUseCase{repository: repository}
+func CreateCreateMessage(repository api.MessageRepository) CreateMessage {
+	return createMessage{messageRepository: repository}
 }
 
-func (uc CreateMessageUseCase) isEmailValid(email string) bool {
+func (s createMessage) isEmailValid(email string) bool {
 	return strings.Contains(email, "@")
 }
 
-func (uc CreateMessageUseCase) CreateMessage(title, content, email string, magicNumber int) (api.Message, error) {
+func (s createMessage) CreateMessage(title, content, email string, magicNumber int) (api.Message, error) {
 	var (
 		message api.Message
 		err     error
 	)
-	if !uc.isEmailValid(email) {
+	if !s.isEmailValid(email) {
 		return message, MessageValidationError{Reason: fmt.Sprintf("invalid email %s provided", email)}
 	}
 
-	message, err = uc.repository.CreateMessage(title, content, email, magicNumber)
+	message, err = s.messageRepository.Create(title, content, email, magicNumber)
 	if err != nil {
 		return api.Message{}, fmt.Errorf("failed to create message: %w", err)
 	}

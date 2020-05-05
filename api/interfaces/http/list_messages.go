@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -11,25 +12,64 @@ import (
 	"github.com/ustrugany/projectx/api/service"
 )
 
-type ListMessagesHandler struct {
-	useCase service.ListMessagesUseCase
+type ListMessagesResponse struct {
+	Data []api.Message `json:"data"`
+}
+
+type listMessagesHandler struct {
+	service service.ListMessages
 	logger  zap.SugaredLogger
 	config  api.Config
 }
 
-func (h ListMessagesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h listMessagesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	_, err := w.Write([]byte(fmt.Sprintf("Hola %s!", vars["email"])))
-	h.logger.Infow("Listing messages", "m", "@TODO put message here")
-	if err != nil {
+	if email, ok := vars["email"]; ok {
+		messages, err := h.service.ListMessages(service.Query{Email: email})
+		if err != nil {
+			h.serve500Error(err, ServerErrorBody, w)
+		}
+
+		h.logger.Debugw("messages found", "email", email, "messages_count", len(messages))
+
+		response := ListMessagesResponse{
+			Data: messages,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(response)
+		if err != nil {
+			h.serve500Error(err, ServerErrorBody, w)
+		}
+
+		return
+	}
+
+	h.serve400Error(nil, BadRequestBody, w)
+}
+
+func CreateListMessagesHandler(service service.ListMessages, logger zap.SugaredLogger, config api.Config) http.Handler {
+	return listMessagesHandler{
+		service: service,
+		logger:  logger,
+		config:  config,
+	}
+}
+
+func (h listMessagesHandler) serve500Error(err error, content string, w http.ResponseWriter) {
+	h.logger.Error("Server error", "err", err)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusInternalServerError)
+	if _, err = fmt.Fprintln(w, content); err != nil {
 		panic(err)
 	}
 }
 
-func CreateListMessagesHandler(useCase service.ListMessagesUseCase, logger zap.SugaredLogger, config api.Config) ListMessagesHandler {
-	return ListMessagesHandler{
-		useCase: useCase,
-		logger:  logger,
-		config:  config,
+func (h listMessagesHandler) serve400Error(err error, content string, w http.ResponseWriter) {
+	h.logger.Error("Bad request", "err", err)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusBadRequest)
+	if _, err = fmt.Fprintln(w, content); err != nil {
+		panic(err)
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/ustrugany/projectx/api"
+	"github.com/ustrugany/projectx/api/infrastructure/delivery/stdout"
 	"github.com/ustrugany/projectx/api/infrastructure/persistence/inmemory"
 	httpInterface "github.com/ustrugany/projectx/api/interfaces/http"
 	"github.com/ustrugany/projectx/api/service"
@@ -28,7 +29,7 @@ func main() {
 	defer func() {
 		_ = baseLogger.Sync()
 	}()
-	logger := baseLogger.Sugar()
+	logger := *baseLogger.Sugar()
 
 	logger.Infow("@TODO remove", "config", config)
 
@@ -37,24 +38,30 @@ func main() {
 		inmemory.CreateDb(),
 	)
 
-	createMessageUseCase := service.CreateCreateMessageUseCase(messageRepository)
+	// Create message endpoint
+	createMessageUseCase := service.CreateCreateMessage(messageRepository)
 	createMessageHandler := httpInterface.CreateCreateMessageHandler(
 		createMessageUseCase,
-		*logger,
+		logger,
 		config,
 	)
 
-	listMessagesUseCase := service.CreateListMessagesUseCase(messageRepository)
+	// List messages endpoint
+	listMessages := service.CreateListMessages(
+		messageRepository,
+	)
 	getMessageHandler := httpInterface.CreateListMessagesHandler(
-		listMessagesUseCase,
-		*logger,
+		listMessages,
+		logger,
 		config,
 	)
 
-	sendMessageUseCase := service.CreateSendMessageUseCase(messageRepository)
+	// Send message endpoint
+	delivery := stdout.CreateMessageDelivery(logger)
+	sendMessageUseCase := service.CreateSendMessage(messageRepository, delivery)
 	updateMessageHandler := httpInterface.CreateSendMessageHandler(
 		sendMessageUseCase,
-		*logger,
+		logger,
 		config,
 	)
 
@@ -103,10 +110,10 @@ func CreateLogger() *zap.Logger {
 
 func CreateServerCommand(
 	config *api.Config,
-	gmh httpInterface.ListMessagesHandler,
-	umh httpInterface.SendMessageHandler,
-	cmh httpInterface.CreateMessageHandler,
-	logger *zap.SugaredLogger,
+	listMessages http.Handler,
+	sendMessage http.Handler,
+	createMessage http.Handler,
+	logger zap.SugaredLogger,
 ) *cobra.Command {
 	return &cobra.Command{
 		Use:   "server",
@@ -115,10 +122,10 @@ func CreateServerCommand(
 		Run: func(cmd *cobra.Command, args []string) {
 			r := mux.NewRouter()
 			subRouter := r.PathPrefix("/api").Subrouter()
-			subRouter.Handle("/message", cmh).Methods(http.MethodPost)
-			subRouter.Handle("/message/send", umh).Methods(http.MethodPost)
-			subRouter.Handle("/messages/{email}", gmh).Methods(http.MethodGet)
-			logger.Infow("Listening...",
+			subRouter.Handle("/message", createMessage).Methods(http.MethodPost)
+			subRouter.Handle("/send", sendMessage).Methods(http.MethodPost)
+			subRouter.Handle("/messages/{email}", listMessages).Methods(http.MethodGet)
+			logger.Infow("listening...",
 				"config", config,
 			)
 			if err := http.ListenAndServe(fmt.Sprintf(":%d", config.Port), r); err != nil {

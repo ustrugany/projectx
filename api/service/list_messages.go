@@ -10,27 +10,32 @@ type Query struct {
 	Title       string
 }
 
-type ListMessagesError struct{}
+type ListMessages interface {
+	ListMessages(query Query) ([]api.Message, error)
+}
+
+type ListMessagesError struct {
+	Reason string
+}
 
 func (e ListMessagesError) Error() string {
-	return "Error while listing messages"
+	return e.Reason
 }
 
-type ListMessagesUseCase struct {
-	repository api.MessageRepository
+type listMessages struct {
+	messageRepository api.MessageRepository
 }
 
-func CreateListMessagesUseCase(repository api.MessageRepository) ListMessagesUseCase {
-	return ListMessagesUseCase{repository: repository}
+func CreateListMessages(repository api.MessageRepository) ListMessages {
+	return listMessages{messageRepository: repository}
 }
 
-func (uc ListMessagesUseCase) ListMessages(query Query) ([]api.Message, error) {
+func (s listMessages) ListMessages(query Query) ([]api.Message, error) {
 	var (
 		messages []api.Message
 		err      error
 	)
-
-	messages, err = uc.repository.FindMessagesByEmail(query.Email)
+	messages, err = s.messageRepository.FindByEmail(query.Email)
 	if err != nil {
 		return messages, err
 	}

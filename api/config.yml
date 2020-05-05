@@ -1,6 +1,7 @@
 api:
   schema:
     create_message: "config/schema/http/create_message.json"
+    send_message: "config/schema/http/send_message.json"
   timeout: 100
   port: 8090
   cassandra:

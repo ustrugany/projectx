@@ -43,9 +43,11 @@ func (m Message) Validate() (bool, map[string]string) {
 }
 
 type MessageRepository interface {
-	GetMessageByUUID(uuid string) (Message, error)
-	FindMessagesByEmail(email string) ([]Message, error)
-	CreateMessage(title, content, email string, magicNumber int) (Message, error)
-	UpdateMessage(uuid, title, content, email string, magicNumber int) (Message, error)
-	DeleteByMagicNumber(magicNumber int) (int, error)
+	Create(title, content, email string, magicNumber int) (Message, error)
+	GetByUUID(uuid string) (Message, error)
+	FindByEmail(email string) ([]Message, error)
+	FindByMagicNumber(magicNumber int) ([]Message, error)
+	Update(uuid, title, content, email string, magicNumber int) (Message, error)
+	DeleteByUUID(uuid string) (int, error)
+	DeleteByUUIDs(uuids []string) (int, error)
 }
