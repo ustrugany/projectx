@@ -32,7 +32,7 @@ func (c Config) SchemaPath(key string) (string, error) {
 	return "", fmt.Errorf("schema name %s doesn't exist", key)
 }
 
-func NewConfig() (Config, error) {
+func CreateConfig() (Config, error) {
 	var config Config
 	absPath, err := filepath.Abs("")
 	if nil != err {

@@ -81,7 +81,7 @@ func (mr MessageRepository) DeleteByUUID(uuid string) (int, error) {
 	)
 
 	if count, err = mr.db.Delete(uuid); err != nil {
-		return 1, err
+		return 0, err
 	}
 
 	return count, nil

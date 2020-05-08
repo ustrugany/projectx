@@ -2,7 +2,7 @@ package http
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io/ioutil"
 	"net/http"
 
@@ -14,15 +14,15 @@ import (
 )
 
 type CreateMessageRequest struct {
-	Title       string `json:"title"`
-	Email       string `json:"email"`
-	Content     string `json:"content"`
-	MagicNumber int    `json:"magic_number"`
+	Title       string `json:"title" validate:"required"`
+	Email       string `json:"email" validate:"required,email"`
+	Content     string `json:"content" validate:"required,gte=0,lte=1500"`
+	MagicNumber int    `json:"magic_number" validate:"required,gte=0,lte=140"`
 }
 
-type CreateMessageHandler struct {
+type createMessageHandler struct {
+	errorHandler
 	service service.CreateMessage
-	logger  zap.SugaredLogger
 	config  api.Config
 }
 
@@ -31,14 +31,16 @@ func CreateCreateMessageHandler(
 	logger zap.SugaredLogger,
 	config api.Config,
 ) http.Handler {
-	return CreateMessageHandler{
+	return createMessageHandler{
 		service: service,
-		logger:  logger,
 		config:  config,
+		errorHandler: errorHandler{
+			logger: logger,
+		},
 	}
 }
 
-func (h CreateMessageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h createMessageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Read the body
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -63,18 +65,18 @@ func (h CreateMessageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Validate
-	validation := struct {
+	// Validate schema
+	schemaValidation := struct {
 		Errors []jsonschema.ValError `json:"errors"`
 	}{}
-	if validation.Errors, err = rs.ValidateBytes(body); len(validation.Errors) > 0 {
-		h.logger.Warnw("message found invalid", "validation", validation)
-		var errorsData []byte
-		errorsData, err = json.Marshal(validation)
+	if schemaValidation.Errors, err = rs.ValidateBytes(body); len(schemaValidation.Errors) > 0 {
+		h.logger.Warnw("message found invalid", "schemaValidation", schemaValidation)
+		var bytes []byte
+		bytes, err = json.Marshal(schemaValidation)
 		if err != nil {
 			panic(err)
 		}
-		h.serve400Error(err, string(errorsData), w)
+		h.serve400Error(err, string(bytes), w)
 		return
 	}
 
@@ -86,32 +88,36 @@ func (h CreateMessageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var m api.Message
-	m, err = h.service.CreateMessage(cm.Title, cm.Content, cm.Email, cm.MagicNumber)
+	var (
+		validationErr service.ValidationError
+		message       api.Message
+	)
+
+	message, err = h.service.CreateMessage(cm.Title, cm.Content, cm.Email, cm.MagicNumber)
 	if err != nil {
-		h.serve500Error(err, ServerErrorBody, w)
+		// Something went wrong
+		if !errors.As(err, &validationErr) {
+			h.serve500Error(err, ServerErrorBody, w)
+			return
+		}
+
+		// Validation errors
+		validation := struct {
+			Errors map[string]string `json:"errors"`
+		}{
+			Errors: validationErr.Violations(),
+		}
+		var bytes []byte
+		bytes, err = json.Marshal(validation)
+		if err != nil {
+			panic(err)
+		}
+		h.serve400Error(err, string(bytes), w)
 		return
 	}
-	h.logger.Debugw("message created", "message", m)
+
+	h.logger.Debugw("creating message", "message", message)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-}
-
-func (h CreateMessageHandler) serve500Error(err error, content string, w http.ResponseWriter) {
-	h.logger.Error("Server error", "err", err)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
-	if _, err = fmt.Fprintln(w, content); err != nil {
-		panic(err)
-	}
-}
-
-func (h CreateMessageHandler) serve400Error(err error, content string, w http.ResponseWriter) {
-	h.logger.Error("Bad request", "err", err)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
-	if _, err = fmt.Fprintln(w, content); err != nil {
-		panic(err)
-	}
 }

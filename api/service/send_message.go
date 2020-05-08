@@ -1,4 +1,4 @@
-package service // could be called service
+package service // could be called usecase
 
 import (
 	"fmt"
@@ -7,61 +7,116 @@ import (
 )
 
 type SendMessage interface {
-	SendMessage(magicNumber int) ([]string, []string, error)
+	// Sends the messages by magicNumber.
+	// Returns delivered uuids and/or an error
+	SendMessage(magicNumber int) ([]string, error)
 }
 
 type SendMessageError struct {
-	Reason string
+	reason      string
+	failed      []string
+	deliveryErr error
+	deleteErr   error
+}
+
+func CreateSendMessageError(reason string, failed []string, deliveryErr, deleteErr error, ) SendMessageError {
+	return SendMessageError{
+		reason:      reason,
+		failed:      failed,
+		deleteErr:   deleteErr,
+		deliveryErr: deliveryErr,
+	}
 }
 
 func (e SendMessageError) Error() string {
-	return e.Reason
+	return e.reason
+}
+
+type PartialDeliveryError struct {
+	reason  string
+	failed  []string
+	lastErr error
+}
+
+func (e PartialDeliveryError) Error() string {
+	return e.reason
+}
+
+func CreatePartialDeliveryError(reason string, failed []string, lastErr error) PartialDeliveryError {
+	return PartialDeliveryError{
+		reason:  reason,
+		failed:  failed,
+		lastErr: lastErr,
+	}
 }
 
 type MessageDelivery interface {
 	Deliver(message api.Message) error
-	BulkDeliver(messages []api.Message) ([]string, []string, error)
+	BulkDeliver(messages []api.Message) ([]string, error)
 }
 
 type sendMessage struct {
-	messageRepository api.MessageRepository
-	delivery          MessageDelivery
+	repository api.MessageRepository
+	delivery   MessageDelivery
 }
 
 func CreateSendMessage(repository api.MessageRepository, delivery MessageDelivery) SendMessage {
-	return sendMessage{messageRepository: repository, delivery: delivery}
+	return sendMessage{repository: repository, delivery: delivery}
 }
 
-func (s sendMessage) SendMessage(magicNumber int) ([]string, []string, error) {
+func (s sendMessage) SendMessage(magicNumber int) ([]string, error) {
 	var (
-		messages []api.Message
-		sent     []string
-		failed   []string
-		err      error
+		delivered []string
 	)
 
-	messages, err = s.messageRepository.FindByMagicNumber(magicNumber)
+	// Lookup
+	messages, err := s.repository.FindByMagicNumber(magicNumber)
 	if err != nil {
-		return sent, failed, SendMessageError{}
+		return delivered, fmt.Errorf("failed to send messages: %w", err)
+	}
+	if len(messages) == 0 {
+		return  delivered, nil
 	}
 
-	sent, failed, err = s.delivery.BulkDeliver(messages)
+	// Delivery, it is not atomic operation, can return partial result
+	delivered, err = s.delivery.BulkDeliver(messages)
 	if err != nil {
-		return sent, failed, SendMessageError{
-			Reason: fmt.Sprintf("delivery failed for %d/%d messages", len(failed), len(messages)),
+		// Either failed to sent all or unexpected error
+		deliveryErr, ok := err.(PartialDeliveryError)
+		if !ok || (len(deliveryErr.failed) == len(messages)){
+			return delivered, fmt.Errorf("failed to send messages: %w", err)
+		}
+
+		// Bulk delete the ones delivered
+		_, deleteErr := s.repository.DeleteByUUIDs(delivered)
+		if deleteErr != nil {
+			return delivered, fmt.Errorf(
+				"failed to complete sending messages: %w", CreateSendMessageError(
+					"partially delivered some messages but failed to delete them",
+					deliveryErr.failed,
+					deliveryErr,
+					deleteErr,
+				),
+			)
+		}
+
+		return delivered, nil
+	}
+
+	// Bulk delete
+	if len(delivered) > 0 {
+		_, deleteErr := s.repository.DeleteByUUIDs(delivered)
+		if deleteErr != nil {
+			return delivered, fmt.Errorf(
+				"failed to complete sending messages: %w", CreateSendMessageError(
+					"failed to delete delivered messages",
+					nil,
+					nil,
+					deleteErr,
+				),
+			)
 		}
 	}
 
-	count, err := s.messageRepository.DeleteByUUIDs(sent)
-	if err != nil {
-		return sent, failed, SendMessageError{}
-	}
-
-	if count != len(sent) {
-		return sent, failed, SendMessageError{
-			Reason: fmt.Sprintf("inconsistency error %d sent %d deleted messages", len(sent), count),
-		}
-	}
-
-	return sent, failed, nil
+	return delivered, nil
 }

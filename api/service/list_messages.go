@@ -14,20 +14,21 @@ type ListMessages interface {
 	ListMessages(query Query) ([]api.Message, error)
 }
 
+// @TODO standardize errors
 type ListMessagesError struct {
-	Reason string
+	reason string
 }
 
 func (e ListMessagesError) Error() string {
-	return e.Reason
+	return e.reason
 }
 
 type listMessages struct {
-	messageRepository api.MessageRepository
+	repository api.MessageRepository
 }
 
 func CreateListMessages(repository api.MessageRepository) ListMessages {
-	return listMessages{messageRepository: repository}
+	return listMessages{repository: repository}
 }
 
 func (s listMessages) ListMessages(query Query) ([]api.Message, error) {
@@ -35,7 +36,7 @@ func (s listMessages) ListMessages(query Query) ([]api.Message, error) {
 		messages []api.Message
 		err      error
 	)
-	messages, err = s.messageRepository.FindByEmail(query.Email)
+	messages, err = s.repository.FindByEmail(query.Email)
 	if err != nil {
 		return messages, err
 	}

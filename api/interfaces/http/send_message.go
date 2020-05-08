@@ -2,7 +2,6 @@ package http
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -22,21 +21,23 @@ type SendMessageRequest struct {
 	MagicNumber int `json:"magic_number"`
 }
 
-type SendMessageHandler struct {
+type sendMessageHandler struct {
+	errorHandler
 	service service.SendMessage
-	logger  zap.SugaredLogger
 	config  api.Config
 }
 
 func CreateSendMessageHandler(service service.SendMessage, logger zap.SugaredLogger, config api.Config) http.Handler {
-	return SendMessageHandler{
+	return sendMessageHandler{
 		service: service,
-		logger:  logger,
 		config:  config,
+		errorHandler: errorHandler{
+			logger: logger,
+		},
 	}
 }
 
-func (h SendMessageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h sendMessageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Read the body
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -67,12 +68,12 @@ func (h SendMessageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}{}
 	if validation.Errors, err = rs.ValidateBytes(body); len(validation.Errors) > 0 {
 		h.logger.Warnw("message found invalid", "validation", validation)
-		var errorsData []byte
-		errorsData, err = json.Marshal(validation)
+		var bytes []byte
+		bytes, err = json.Marshal(validation)
 		if err != nil {
 			panic(err)
 		}
-		h.serve400Error(err, string(errorsData), w)
+		h.serve400Error(err, string(bytes), w)
 		return
 	}
 
@@ -85,36 +86,18 @@ func (h SendMessageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send messages
-	sent, failed, err := h.service.SendMessage(sm.MagicNumber)
+	sent, err := h.service.SendMessage(sm.MagicNumber)
 	if err != nil {
 		h.serve500Error(err, ServerErrorBody, w)
 		return
 	}
 
-	h.logger.Debugw("message sending result", "magic_number", sm.MagicNumber, "sent", sent, "failed", failed)
+	h.logger.Debugw("sending message", "magic_number", sm.MagicNumber, "sent", sent, "failed", failed)
 
 	w.Header().Set("Content-Type", "application/json")
 	if len(sent) == 0 {
 		w.WriteHeader(http.StatusNotFound)
 	} else {
 		w.WriteHeader(http.StatusAccepted)
-	}
-}
-
-func (h SendMessageHandler) serve500Error(err error, content string, w http.ResponseWriter) {
-	h.logger.Error("Server error", "err", err)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
-	if _, err = fmt.Fprintln(w, content); err != nil {
-		panic(err)
-	}
-}
-
-func (h SendMessageHandler) serve400Error(err error, content string, w http.ResponseWriter) {
-	h.logger.Error("Bad request", "err", err)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
-	if _, err = fmt.Fprintln(w, content); err != nil {
-		panic(err)
 	}
 }

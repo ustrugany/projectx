@@ -71,12 +71,11 @@ func (db DB) GetByMagicNumber(magicNumber int) ([]api.Message, error) {
 }
 
 func (db DB) Delete(uuid string) (int, error) {
-	var m api.Message
 	if len(uuid) == 0 {
 		return 0, errors.New("uuid is required")
 	}
 
-	delete(db.Storage, m.UUID)
+	delete(db.Storage, uuid)
 
 	return 1, nil
 }

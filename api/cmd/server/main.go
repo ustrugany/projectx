@@ -4,22 +4,30 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
+	"strings"
 
+	"github.com/go-playground/locales/en"
+	ut "github.com/go-playground/universal-translator"
 	"github.com/gorilla/mux"
+	validator9 "gopkg.in/go-playground/validator.v9"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
+	translationsEn "gopkg.in/go-playground/validator.v9/translations/en"
+
 	"github.com/ustrugany/projectx/api"
 	"github.com/ustrugany/projectx/api/infrastructure/delivery/stdout"
 	"github.com/ustrugany/projectx/api/infrastructure/persistence/inmemory"
+	"github.com/ustrugany/projectx/api/infrastructure/validation"
 	httpInterface "github.com/ustrugany/projectx/api/interfaces/http"
 	"github.com/ustrugany/projectx/api/service"
 )
 
 func main() {
 	// Config
-	config, err := api.NewConfig()
+	config, err := api.CreateConfig()
 	if err != nil {
 		panic(err)
 	}
@@ -31,36 +39,55 @@ func main() {
 	}()
 	logger := *baseLogger.Sugar()
 
-	logger.Infow("@TODO remove", "config", config)
-
 	// Initialize dependencies
 	messageRepository := inmemory.CreateMessageRepository(
 		inmemory.CreateDb(),
 	)
 
+	// Validator & translator setup
+	locale := "en"
+	validator := validator9.New()
+	translatorEn := en.New()
+	uni := ut.New(translatorEn, translatorEn)
+	translator, found := uni.GetTranslator(locale)
+	if !found {
+		logger.Fatalw("required translator not found", "locale", locale)
+	}
+	if err = translationsEn.RegisterDefaultTranslations(validator, translator); err != nil {
+		logger.Fatal(err)
+	}
+	validator.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+		if name == "-" {
+			return ""
+		}
+		return name
+	})
+
 	// Create message endpoint
-	createMessageUseCase := service.CreateCreateMessage(messageRepository)
+	messageValidator := validation.CreateMessageValidator(*validator, translator)
+	createMessageService := service.CreateCreateMessage(messageRepository, messageValidator)
 	createMessageHandler := httpInterface.CreateCreateMessageHandler(
-		createMessageUseCase,
+		createMessageService,
 		logger,
 		config,
 	)
 
 	// List messages endpoint
-	listMessages := service.CreateListMessages(
+	listMessagesService := service.CreateListMessages(
 		messageRepository,
 	)
 	getMessageHandler := httpInterface.CreateListMessagesHandler(
-		listMessages,
+		listMessagesService,
 		logger,
 		config,
 	)
 
 	// Send message endpoint
 	delivery := stdout.CreateMessageDelivery(logger)
-	sendMessageUseCase := service.CreateSendMessage(messageRepository, delivery)
+	sendMessageService := service.CreateSendMessage(messageRepository, delivery)
 	updateMessageHandler := httpInterface.CreateSendMessageHandler(
-		sendMessageUseCase,
+		sendMessageService,
 		logger,
 		config,
 	)
@@ -121,13 +148,12 @@ func CreateServerCommand(
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			r := mux.NewRouter()
-			subRouter := r.PathPrefix("/api").Subrouter()
+			subRouter := r.PathPrefix("/api").
+				Subrouter()
 			subRouter.Handle("/message", createMessage).Methods(http.MethodPost)
 			subRouter.Handle("/send", sendMessage).Methods(http.MethodPost)
 			subRouter.Handle("/messages/{email}", listMessages).Methods(http.MethodGet)
-			logger.Infow("listening...",
-				"config", config,
-			)
+			logger.Debugw("listening...", "config", config)
 			if err := http.ListenAndServe(fmt.Sprintf(":%d", config.Port), r); err != nil {
 				panic(err)
 			}
