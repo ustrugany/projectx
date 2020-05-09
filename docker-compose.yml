@@ -1,11 +1,16 @@
 version: "3.7"
 services:
-  app:
+  api:
     build:
       dockerfile: Dockerfile
       context: .
-    env_file:
-      - .env
+    environment:
+      - PROJECTX_CASSANDRA_HOST=cassandra-node1
+      - PROJECTX_CASSANDRA_USER=projectx
+      - PROJECTX_CASSANDRA_PASSWORD=projectx
+      - PROJECTX_CASSANDRA_KEYSPACE=projectx
     ports:
       - "8090:8090"
     command: ["server", "--port=8090"]
+  test:
+    image: alpine:3.11.6

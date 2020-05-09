@@ -1,0 +1,90 @@
+{
+	"info": {
+		"_postman_id": "d3631d80-2552-4791-9477-8529c4cbc109",
+		"name": "projectx",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "create message",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"email\":\"anna.zajkowska@example.com\",\"title\":\"Interview 3\",\"content\":\"simple text 3\",\"magic_number\":333}"
+				},
+				"url": {
+					"raw": "localhost:8090/api/message",
+					"host": [
+						"localhost"
+					],
+					"port": "8090",
+					"path": [
+						"api",
+						"message"
+					]
+				},
+				"description": "post a message"
+			},
+			"response": []
+		},
+		{
+			"name": "send message",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"magic_number\":333}"
+				},
+				"url": {
+					"raw": "localhost:8090/api/send",
+					"host": [
+						"localhost"
+					],
+					"port": "8090",
+					"path": [
+						"api",
+						"send"
+					]
+				},
+				"description": "sends a message"
+			},
+			"response": []
+		},
+		{
+			"name": "list messages",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:8090/api/messages/anna.zajkowska@example.com",
+					"host": [
+						"localhost"
+					],
+					"port": "8090",
+					"path": [
+						"api",
+						"messages",
+						"anna.zajkowska@example.com"
+					]
+				},
+				"description": "lists messages"
+			},
+			"response": []
+		}
+	]
+}

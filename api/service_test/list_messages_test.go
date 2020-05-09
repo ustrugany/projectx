@@ -14,12 +14,12 @@ import (
 func TestListMessagesSuccess(t *testing.T) {
 	repository := &mocks.MessageRepositoryMock{}
 	type testCase struct {
-		query   service.Query
+		query   service.ListQuery
 		message []api.Message
 	}
 	var testCases = []testCase{
 		{
-			query: service.Query{
+			query: service.ListQuery{
 				Email: "test1@test1.com",
 			},
 			message: []api.Message{
@@ -28,7 +28,7 @@ func TestListMessagesSuccess(t *testing.T) {
 			},
 		},
 		{
-			query: service.Query{
+			query: service.ListQuery{
 				Email: "test2@test2.com",
 			},
 			message: []api.Message{
@@ -50,12 +50,12 @@ func TestListMessagesSuccess(t *testing.T) {
 func TestListMessageRepositoryError(t *testing.T) {
 	repository := &mocks.MessageRepositoryMock{}
 	type testCase struct {
-		query   service.Query
+		query   service.ListQuery
 		message []api.Message
 	}
 	var testCases = []testCase{
 		{
-			query: service.Query{
+			query: service.ListQuery{
 				Email: "test1@test1.com",
 			},
 			message: []api.Message{},

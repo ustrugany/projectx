@@ -38,7 +38,7 @@ func (mr MessageRepository) GetByUUID(uuid string) (api.Message, error) {
 	return message, nil
 }
 
-func (mr MessageRepository) FindByEmail(email string) ([]api.Message, error) {
+func (mr MessageRepository) FindByEmail(email string, pageSize, pageToken int) ([]api.Message, error) {
 	messages, err := mr.db.GetByEmail(email)
 	if err != nil {
 		return []api.Message{}, fmt.Errorf("failed to find messages: %w", err)

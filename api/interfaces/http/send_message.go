@@ -92,7 +92,7 @@ func (h sendMessageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.logger.Debugw("sending message", "magic_number", sm.MagicNumber, "sent", sent, "failed", failed)
+	h.logger.Debugw("sending message", "magic_number", sm.MagicNumber, "sent", sent)
 
 	w.Header().Set("Content-Type", "application/json")
 	if len(sent) == 0 {

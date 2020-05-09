@@ -42,10 +42,18 @@ func (m Message) Validate() (bool, map[string]string) {
 	return len(errors) == 0, errors
 }
 
+type RepositoryError struct {
+	reason string
+}
+
+func (e RepositoryError) Error() string {
+	return e.reason
+}
+
 type MessageRepository interface {
 	Create(title, content, email string, magicNumber int) (Message, error)
 	GetByUUID(uuid string) (Message, error)
-	FindByEmail(email string) ([]Message, error)
+	FindByEmail(email string, pageSize, pageToken int) ([]Message, error)
 	FindByMagicNumber(magicNumber int) ([]Message, error)
 	Update(uuid, title, content, email string, magicNumber int) (Message, error)
 	DeleteByUUID(uuid string) (int, error)

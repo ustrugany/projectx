@@ -4,17 +4,18 @@ import (
 	"github.com/ustrugany/projectx/api"
 )
 
-type Query struct {
+type ListQuery struct {
 	Email       string
 	MagicNumber string
 	Title       string
+	PageSize    int
+	PageToken   int
 }
 
 type ListMessages interface {
-	ListMessages(query Query) ([]api.Message, error)
+	ListMessages(query ListQuery) ([]api.Message, error)
 }
 
-// @TODO standardize errors
 type ListMessagesError struct {
 	reason string
 }
@@ -31,12 +32,12 @@ func CreateListMessages(repository api.MessageRepository) ListMessages {
 	return listMessages{repository: repository}
 }
 
-func (s listMessages) ListMessages(query Query) ([]api.Message, error) {
+func (s listMessages) ListMessages(query ListQuery) ([]api.Message, error) {
 	var (
 		messages []api.Message
 		err      error
 	)
-	messages, err = s.repository.FindByEmail(query.Email)
+	messages, err = s.repository.FindByEmail(query.Email, query.PageSize, query.PageToken)
 	if err != nil {
 		return messages, err
 	}

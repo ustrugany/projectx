@@ -19,7 +19,7 @@ type SendMessageError struct {
 	deleteErr   error
 }
 
-func CreateSendMessageError(reason string, failed []string, deliveryErr, deleteErr error, ) SendMessageError {
+func CreateSendMessageError(reason string, failed []string, deliveryErr, deleteErr error) SendMessageError {
 	return SendMessageError{
 		reason:      reason,
 		failed:      failed,
@@ -75,7 +75,7 @@ func (s sendMessage) SendMessage(magicNumber int) ([]string, error) {
 		return delivered, fmt.Errorf("failed to send messages: %w", err)
 	}
 	if len(messages) == 0 {
-		return  delivered, nil
+		return delivered, nil
 	}
 
 	// Delivery, it is not atomic operation, can return partial result
@@ -83,7 +83,7 @@ func (s sendMessage) SendMessage(magicNumber int) ([]string, error) {
 	if err != nil {
 		// Either failed to sent all or unexpected error
 		deliveryErr, ok := err.(PartialDeliveryError)
-		if !ok || (len(deliveryErr.failed) == len(messages)){
+		if !ok || (len(deliveryErr.failed) == len(messages)) {
 			return delivered, fmt.Errorf("failed to send messages: %w", err)
 		}
 

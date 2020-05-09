@@ -15,11 +15,12 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
+	"github.com/gocql/gocql"
 	translationsEn "gopkg.in/go-playground/validator.v9/translations/en"
 
 	"github.com/ustrugany/projectx/api"
 	"github.com/ustrugany/projectx/api/infrastructure/delivery/stdout"
-	"github.com/ustrugany/projectx/api/infrastructure/persistence/inmemory"
+	"github.com/ustrugany/projectx/api/infrastructure/persistence/cassandra"
 	"github.com/ustrugany/projectx/api/infrastructure/validation"
 	httpInterface "github.com/ustrugany/projectx/api/interfaces/http"
 	"github.com/ustrugany/projectx/api/service"
@@ -32,6 +33,19 @@ func main() {
 		panic(err)
 	}
 
+	cluster := gocql.NewCluster(config.Cassandra.Host)
+	cluster.Authenticator = gocql.PasswordAuthenticator{
+		Username: config.Cassandra.User,
+		Password: config.Cassandra.Password,
+	}
+	cluster.Keyspace = config.Cassandra.Keyspace
+	Session, err := cluster.CreateSession()
+	if err != nil {
+		panic(err)
+	}
+
+	defer Session.Close()
+
 	// Logger
 	baseLogger := CreateLogger()
 	defer func() {
@@ -40,8 +54,11 @@ func main() {
 	logger := *baseLogger.Sugar()
 
 	// Initialize dependencies
-	messageRepository := inmemory.CreateMessageRepository(
-		inmemory.CreateDb(),
+	//messageRepository := inmemory.CreateMessageRepository(
+	//	inmemory.CreateDb(),
+	//)
+	messageRepository := cassandra.CreateMessageRepository(
+		Session,
 	)
 
 	// Validator & translator setup
@@ -152,7 +169,8 @@ func CreateServerCommand(
 				Subrouter()
 			subRouter.Handle("/message", createMessage).Methods(http.MethodPost)
 			subRouter.Handle("/send", sendMessage).Methods(http.MethodPost)
-			subRouter.Handle("/messages/{email}", listMessages).Methods(http.MethodGet)
+			subRouter.Handle("/messages/{email}", listMessages).
+				Methods(http.MethodGet)
 			logger.Debugw("listening...", "config", config)
 			if err := http.ListenAndServe(fmt.Sprintf(":%d", config.Port), r); err != nil {
 				panic(err)

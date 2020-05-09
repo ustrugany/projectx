@@ -15,6 +15,7 @@ type Config struct {
 		Host     string `mapstructure:"host"`
 		User     string `mapstructure:"user"`
 		Password string `mapstructure:"password"`
+		Keyspace string `mapstructure:"keyspace"`
 	} `mapstructure:"cassandra"`
 	Timeout int `mapstructure:"timeout"`
 }
