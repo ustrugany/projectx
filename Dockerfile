@@ -3,13 +3,16 @@ FROM golang:${GO_VERSION} as build-env
 
 WORKDIR /go/src/github.com/ustrugany/projectx/
 
-COPY app/vendor app/vendor
-COPY app .
+COPY api/vendor api/vendor
+COPY api .
 RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -a -installsuffix cgo -o projectx ./cmd/server/main.go
 RUN chmod +x ./projectx
 
 ENTRYPOINT ["./projectx"]
 CMD ""
+
+#ENTRYPOINT ""
+#CMD ["./projectx"]
 
 #FROM alpine:3.7
 #WORKDIR /app
