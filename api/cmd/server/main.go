@@ -33,6 +33,15 @@ func main() {
 		panic(err)
 	}
 
+	// Logger
+	baseLogger := CreateLogger()
+	defer func() {
+		_ = baseLogger.Sync()
+	}()
+	logger := *baseLogger.Sugar()
+
+	logger.Debugw("@TODO remove me", "config", config)
+
 	cluster := gocql.NewCluster(config.Cassandra.Host)
 	cluster.Authenticator = gocql.PasswordAuthenticator{
 		Username: config.Cassandra.User,
@@ -45,13 +54,6 @@ func main() {
 	}
 
 	defer Session.Close()
-
-	// Logger
-	baseLogger := CreateLogger()
-	defer func() {
-		_ = baseLogger.Sync()
-	}()
-	logger := *baseLogger.Sugar()
 
 	// Initialize dependencies
 	//messageRepository := inmemory.CreateMessageRepository(
