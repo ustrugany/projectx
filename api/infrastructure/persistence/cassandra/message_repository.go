@@ -2,7 +2,6 @@ package cassandra
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/gocql/gocql"
 	"github.com/pkg/errors"
@@ -44,7 +43,7 @@ func (mr MessageRepository) Create(title, content, email string, magicNumber int
 
 func (mr MessageRepository) GetByUUID(uuid string) (api.Message, error) {
 	var message api.Message
-	query := `select uuid, title, email, content, magic_number from projectx.message where uuid = ?`
+	query := `select uuid, title, email, content, magic_number from projectx.message where uuid = ? allow filtering`
 	iterable := mr.session.Query(query, uuid).Iter()
 	if iterable.NumRows() > 1 {
 		return message, errors.Errorf("data error, expected one row but returned %d", iterable.NumRows())
@@ -99,7 +98,12 @@ allow filtering
 
 func (mr MessageRepository) FindByMagicNumber(magicNumber int) ([]api.Message, error) {
 	var messages []api.Message
-	query := "select uuid, title, email, content, magic_number from projectx.message where magic_number = ?"
+	query := `
+select uuid, title, email, content, magic_number 
+from projectx.message 
+where magic_number = ? 
+allow filtering
+`
 	iterable := mr.session.Query(query, magicNumber).Iter()
 	scanner := iterable.Scanner()
 	for scanner.Next() {
@@ -133,8 +137,17 @@ func (mr MessageRepository) DeleteByUUIDs(uuids []string) (int, error) {
 		return 0, nil
 	}
 
-	query := "delete from projectx.m where uuid in (?)"
-	iterable := mr.session.Query(query, strings.Join(uuids, ", ")).Iter()
+	query := "delete from projectx.message where magic_number = ? and email = ?"
+	deleted := 0
+	for _, u := range uuids {
+		message, err := mr.GetByUUID(u)
+		if err == nil {
+			iterable := mr.session.Query(query, message.MagicNumber, message.Email).Iter()
+			if iterable.Scanner().Err() == nil {
+				deleted++
+			}
+		}
+	}
 
-	return iterable.NumRows(), nil
+	return deleted, nil
 }

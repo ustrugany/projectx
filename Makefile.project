@@ -28,26 +28,28 @@ print-variables::
 
 ##########################################
 
+run:
+	@echo "Running project"
+	docker run -p ${PORT}:${PORT} --env-file=.env ${REPOSITORY} server --port ${PORT}
+
 build-image:
-	@echo "====================="
 	@echo "Building project image"
-	@echo "====================="
 	docker-compose build --no-cache --build-arg PORT=${PORT}
 
 push-image:
-	@echo "====================="
 	@echo "Pushing project image"
-	@echo "====================="
 	docker push ${REPOSITORY}
 
 ci-lint:
-	@echo "====================="
-	@echo "Running ci/lint"
-	@echo "====================="
+	@echo "Linting and static code analysis"
 	docker run --rm -v $(PWD)/api:/app -w /app golangci/golangci-lint:v1.26.0 golangci-lint run -v
 
 tests-unit:
-	docker run --rm -v $(PWD)/api:/app -w /app golang:1.14.2 bash -c 'go test -race -vet=off -tags=unit ./...'
+	@echo "Running unit tests"
+	docker run --rm -v $(PWD)/api:/app -w /app golang:1.14.2 bash -c 'go test -race -vet=off -tags=unit ./service_test/...'
 
 tests-functional:
-	docker run --rm -v $(PWD)/api:/app -w /app golang:1.14.2 bash -c 'go test -race -vet=off -tags=functional ./...'
+	@echo "Running functional tests"
+	docker run --rm -v $(PWD)/api:/app -w /app golang:1.14.2 bash -c 'go test -race -vet=off -tags=functional ./interfaces_test/...'
+
+tests: tests-unit tests-functional

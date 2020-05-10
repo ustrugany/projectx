@@ -77,8 +77,13 @@ func (h listMessagesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		bytes, err := json.Marshal(response)
+		if err != nil {
+			h.serve500Error(err, ServerErrorBody, w)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(response)
+		_, err = w.Write(bytes)
 		if err != nil {
 			h.serve500Error(err, ServerErrorBody, w)
 		}
