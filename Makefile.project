@@ -1,0 +1,53 @@
+arg = $(filter-out $@,$(MAKECMDGOALS))
+
+PROJECT ?= api
+TAG ?= latest
+REPOSITORY ?= piotras/projectx:${TAG}
+PORT ?= 8090
+GITHUB_TOKEN ?= ${GITHUB_TOKEN}
+
+##########################################
+
+help::
+	@echo "\n"
+	@echo "\033[1;33mMakefile.project\033[0m"
+	@echo "\033[0;33m\tprint-variables\033[0m - Print variables in Makefile"
+	@echo "\033[0;33m\tbuild-image\033[0m - Build images"
+	@echo "\033[0;33m\tpush-image\033[0m - Push image to registry"
+	@echo "\033[0;33m\tci-lint\033[0m - Run linting and static code analysis"
+	@echo "\033[0;33m\ttests-unit\033[0m - Run unit tests"
+	@echo "\033[0;33m\ttests-functional\033[0m - Run functional tests"
+
+print-variables::
+	@echo "\n"
+	@echo "\033[1;33mMakefile.project\033[0m"
+	@echo 'PROJECT="${PROJECT}"'
+	@echo 'REPOSITORY="${REPOSITORY}"'
+	@echo 'PORT="${PORT}"'
+	@echo 'GITHUB_TOKEN="${GITHUB_TOKEN}"'
+
+##########################################
+
+build-image:
+	@echo "====================="
+	@echo "Building project image"
+	@echo "====================="
+	docker-compose build --no-cache --build-arg PORT=${PORT}
+
+push-image:
+	@echo "====================="
+	@echo "Pushing project image"
+	@echo "====================="
+	docker push ${REPOSITORY}
+
+ci-lint:
+	@echo "====================="
+	@echo "Running ci/lint"
+	@echo "====================="
+	docker run --rm -v $(PWD)/api:/app -w /app golangci/golangci-lint:v1.26.0 golangci-lint run -v
+
+tests-unit:
+	docker run --rm -v $(PWD)/api:/app -w /app golang:1.14.2 bash -c 'go test -race -vet=off -tags=unit ./...'
+
+tests-functional:
+	docker run --rm -v $(PWD)/api:/app -w /app golang:1.14.2 bash -c 'go test -race -vet=off -tags=functional ./...'

@@ -1,6 +1,7 @@
 version: "3.7"
 services:
   api:
+    image: piotras/projectx:latest
     build:
       args:
         - PORT=8090

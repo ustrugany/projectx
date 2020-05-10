@@ -18,8 +18,8 @@ func (r *MessageRepositoryMock) GetByUUID(uuid string) (api.Message, error) {
 	args := r.Called(uuid)
 	return args.Get(0).(api.Message), args.Error(1)
 }
-func (r *MessageRepositoryMock) FindByEmail(email string) ([]api.Message, error) {
-	args := r.Called(email)
+func (r *MessageRepositoryMock) FindByEmail(email string, pageSize int, pageToken int) ([]api.Message, error) {
+	args := r.Called(email, pageSize, pageToken)
 	return args.Get(0).([]api.Message), args.Error(1)
 }
 func (r *MessageRepositoryMock) FindByMagicNumber(magicNumber int) ([]api.Message, error) {

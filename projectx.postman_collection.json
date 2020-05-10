@@ -18,7 +18,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\"email\":\"anna.zajkowska@example.com\",\"title\":\"Interview 3\",\"content\":\"simple text 3\",\"magic_number\":333}"
+					"raw": "{\"email\":\"anna.zajkowska@example.com\",\"title\":\"Interview 3\",\"content\":\"simple text 3\",\"magic_number\":345}"
 				},
 				"url": {
 					"raw": "localhost:8090/api/message",
@@ -71,7 +71,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "localhost:8090/api/messages/anna.zajkowska@example.com",
+					"raw": "localhost:8090/api/messages/anna.zajkowska@example.com?page_size=3",
 					"host": [
 						"localhost"
 					],
@@ -80,6 +80,17 @@
 						"api",
 						"messages",
 						"anna.zajkowska@example.com"
+					],
+					"query": [
+						{
+							"key": "page_size",
+							"value": "3"
+						},
+						{
+							"key": "page_token",
+							"value": "890",
+							"disabled": true
+						}
 					]
 				},
 				"description": "lists messages"

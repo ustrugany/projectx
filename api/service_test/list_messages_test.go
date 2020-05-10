@@ -1,3 +1,5 @@
+// +build unit
+
 package service_test
 
 import (
@@ -38,7 +40,7 @@ func TestListMessagesSuccess(t *testing.T) {
 	}
 	s := service.CreateListMessages(repository)
 	for _, tc := range testCases {
-		repository.On("FindByEmail", tc.query.Email).
+		repository.On("FindByEmail", tc.query.Email, tc.query.PageSize, tc.query.PageToken).
 			Return(tc.message, nil)
 		actual, err := s.ListMessages(tc.query)
 		assert.NoError(t, err)
@@ -63,7 +65,7 @@ func TestListMessageRepositoryError(t *testing.T) {
 	}
 	s := service.CreateListMessages(repository)
 	for _, tc := range testCases {
-		repository.On("FindByEmail", tc.query.Email).
+		repository.On("FindByEmail", tc.query.Email, tc.query.PageSize, tc.query.PageToken).
 			Return(tc.message, errors.New("some error"))
 		_, err := s.ListMessages(tc.query)
 		assert.Error(t, err)
