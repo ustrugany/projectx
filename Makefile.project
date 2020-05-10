@@ -29,7 +29,11 @@ print-variables::
 ##########################################
 
 run:
-	@echo "Running project"
+	@echo "Running project with dependencies"
+	docker-compose -f docker-compose.yml -f docker-compose.backing.yml up --remove-orphans
+
+server:
+	@echo "Running server only"
 	docker run -p ${PORT}:${PORT} --env-file=.env ${REPOSITORY} server --port ${PORT}
 
 build-image:

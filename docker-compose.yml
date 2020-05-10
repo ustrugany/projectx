@@ -7,6 +7,7 @@ services:
         - PORT=8090
       dockerfile: Dockerfile
       context: .
+    restart: always
     environment:
       - PROJECTX_CASSANDRA_HOST=cassandra-node1
       - PROJECTX_CASSANDRA_USER=projectx
@@ -17,3 +18,7 @@ services:
     command: ["server", "--port=8090"]
   test:
     image: alpine:3.11.6
+
+networks:
+  default:
+    name: projectx
