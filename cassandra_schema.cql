@@ -28,7 +28,3 @@ insert into projectx.message(uuid, title, email, content, magic_number, meta_cre
 values ('9d86c8a3-3835-4aa1-b016-495bf5c469a7', 'interview 3', 'anna.zajkowska@example.com', 'simple text 3', 678, toTimestamp(now()))  USING TTL 600;
 insert into projectx.message(uuid, title, email, content, magic_number, meta_created_tstamp)
 values ('9d86c8a3-3835-4aa1-b016-495bf5c469a7', 'interview 3', 'anna.zajkowska@example.com', 'simple text 3', 890, toTimestamp(now()))  USING TTL 600;
-
-select * from projectx.message limit 2;
-SELECT * FROM projectx.message
-WHERE TOKEN(magic_number, email) > TOKEN(0, 'anna.zajkowska@example.com') limit 2;
